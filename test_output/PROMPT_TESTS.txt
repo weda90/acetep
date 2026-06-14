@@ -1,0 +1,9 @@
+Prompt Engineering Tests — Vocal Prominence
+============================================
+
+p1_original.wav      — "modern pop rock, powerful female vocal, emotional and energetic"
+p2_vocal_forward.wav — "female vocal lead upfront and clear, voice cuts through the mix"
+p3_vocal_centric.wav — "vocal centric arrangement, prominent female vocals with crisp clarity"
+p4_dry_vocal.wav     — "intimate female vocal, dry close-mic vocal sound, vocal forward in the mix"
+
+Bandingkan mana yang vokalnya paling jelas.

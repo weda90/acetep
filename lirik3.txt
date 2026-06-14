@@ -1,3 +1,11 @@
+# Style
+
+Genre: Pop Rock
+Mood: Angry, frustrated, empowering
+Vocal: Female
+Tempo: Medium
+Instruments: electric guitar, punchy drums, explosive chorus
+
 [Verse 1]
 Two months passing, still no sound
 Every promise falling down
