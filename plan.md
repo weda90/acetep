@@ -28,14 +28,37 @@ acegen info           # Informasi model dan status
 | `--key` | auto | Key override |
 | `--seed` | random | Seed |
 | `--model` | `"mlx-community/ACE-Step1.5-MLX-4bit"` | HF model ID |
+| `--chunk-duration`, `-c` | `30` | Maks detik per chunk (0=disable) |
 | `--verbose`, `-v` | `False` | Output detail |
+
+## Chunked Mode (Long Audio)
+
+Untuk lagu lebih dari ~120s (tergantung GPU), durasi dipecah otomatis menjadi
+beberapa chunk, di-generate terpisah dengan seed berurutan, lalu di-stitch
+dengan crossfade 2 detik agar transisi mulus.
+
+Alur:
+1. `n_chunks = ceil(duration / chunk_duration)`
+2. Lirik dibagi proporsional per chunk
+3. Tiap chunk di-generate dengan seed `seed + i`, prompt/BPM/key tetap
+4. Overlap chunk[i] dengan chunk[i+1] sebesar 2s
+5. Linear crossfade (fade-out / fade-in) di setiap boundary
+6. Output: 1 file WAV utuh
 
 ## Examples
 
 ```bash
+# Short generation (single pass)
 acegen generate -t "jazz piano" -d 30 -o jazz.wav
-acegen generate -t "pop song" -l lyrics.txt -d 60 -L id
-acegen generate -t "ambient" -o ambient.wav
+
+# Long generation with chunking (e.g. 180s)
+acegen generate -t "pop song" -l lyrics.txt -d 180 -L id -o lagu.wav
+
+# Custom chunk size (for tighter GPU)
+acegen generate -t "ambient" -d 180 -c 20 -o ambient.wav
+
+# Disable chunking
+acegen generate -t "beat" -d 30 -c 0 -o beat.wav
 ```
 
 ## Struktur File

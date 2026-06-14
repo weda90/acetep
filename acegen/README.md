@@ -19,6 +19,12 @@ acegen generate -t "pop song" -l "lyrics.txt" -d 60 -L id
 
 # Instrumental tanpa LM (lebih cepat, kualitas lebih rendah)
 acegen generate -t "ambient" --no-lm -o ambient.wav --steps 4
+
+# Lagu panjang (180s) — otomatis chunked + crossfade
+acegen generate -t "pop rock" -l lirik.txt -d 180 -o lagu.wav
+
+# Custom chunk size untuk GPU terbatas
+acegen generate -t "ambient" -d 180 -c 20 -o ambient.wav
 ```
 
 ## Options
@@ -38,10 +44,14 @@ acegen generate -t "ambient" --no-lm -o ambient.wav --steps 4
 | `--bpm` | auto | Override BPM |
 | `--key` | auto | Override key/scale |
 | `--seed` | random | Seed reproducibility |
+| `-c`, `--chunk-duration` | `30` | Maks detik per chunk (0=disable) |
 | `-v` | — | Output detail |
 
 ## Catatan
 
 - `use_lm=True` wajib untuk kualitas bagus (default ON)
 - Model otomatis di-cache setelah pertama load
+- Untuk durasi > 120s (tergantung GPU), chunking aktif otomatis:
+  durasi dipecah per 30s, lirik dibagi proporsional, tiap chunk
+  di-generate dengan seed berurutan lalu di-stitch crossfade 2s
 - Lihat `docs/catatan-perbaikan.md` untuk dokumentasi fix issue

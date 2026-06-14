@@ -27,6 +27,8 @@ def build_parser():
     g.add_argument("--key", default=None, help="Key/scale override")
     g.add_argument("--seed", type=int, default=None, help="Random seed")
     g.add_argument("--model", default="mlx-community/ACE-Step1.5-MLX-4bit", help="HF model ID")
+    g.add_argument("-c", "--chunk-duration", type=float, default=30.0,
+                    help="Max seconds per chunk for long audio (default: 30)")
     g.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
     return p
@@ -52,6 +54,7 @@ def main():
             keyscale=args.key,
             seed=args.seed,
             model_id=args.model,
+            chunk_duration=args.chunk_duration,
             verbose=args.verbose,
         )
     else:
