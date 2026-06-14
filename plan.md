@@ -28,14 +28,15 @@ acegen info           # Informasi model dan status
 | `--key` | auto | Key override |
 | `--seed` | random | Seed |
 | `--model` | `"mlx-community/ACE-Step1.5-MLX-4bit"` | HF model ID |
-| `--chunk-duration`, `-c` | `30` | Maks detik per chunk (0=disable) |
+| `--chunk-duration`, `-c` | `0` | Aktifkan chunked mode: maks detik per chunk (default: disabled) |
 | `--no-consistent` | — | Matikan single-LM consistent chunking |
 | `--verbose`, `-v` | `False` | Output detail |
 
 ## Chunked Mode (Long Audio)
 
-Untuk lagu lebih dari ~120s (tergantung GPU), durasi dipecah otomatis menjadi
-beberapa chunk, lalu di-stitch dengan crossfade 2 detik.
+Aktif dengan flag `-c <detik>`. Untuk lagu yang melebihi kapasitas GPU
+(> ~120s tergantung GPU), durasi dipecah menjadi beberapa chunk,
+lalu di-stitch dengan crossfade 2 detik.
 
 ### Consistent Mode (Default)
 
@@ -54,20 +55,17 @@ Gunakan jika single LM gagal (GPU terbatas):
 ## Examples
 
 ```bash
-# Short generation (single pass)
+# Short generation (single pass) — default, no chunking
 acegen generate -t "jazz piano" -d 30 -o jazz.wav
 
-# Long generation with consistent chunking (default)
-acegen generate -t "pop song" -l lyrics.txt -d 180 -L id -o lagu.wav
+# Long generation (180s) — gunakan -c untuk aktifkan chunking
+acegen generate -t "pop song" -l lyrics.txt -d 180 -L id -c 30 -o lagu.wav
 
-# Custom chunk size (for tighter GPU)
+# Custom chunk size 20s
 acegen generate -t "ambient" -d 180 -c 20 -o ambient.wav
 
-# Per-chunk LM (fallback, less consistent)
-acegen generate -t "pop" -l lyrics.txt -d 180 --no-consistent -o lagu.wav
-
-# Disable chunking
-acegen generate -t "beat" -d 30 -c 0 -o beat.wav
+# Per-chunk LM (less consistent, fallback)
+acegen generate -t "pop" -l lyrics.txt -d 180 -c 30 --no-consistent -o lagu.wav
 ```
 
 ## Struktur File

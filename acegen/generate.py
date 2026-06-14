@@ -169,7 +169,7 @@ def generate(
     keyscale=None,
     seed=None,
     model_id: str = MODEL_ID,
-    chunk_duration: float = 30.0,
+    chunk_duration: float = 0,
     consistent: bool = True,
     verbose: bool = True,
 ):
