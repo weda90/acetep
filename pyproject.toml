@@ -1,0 +1,16 @@
+[project]
+name = "acegen"
+version = "0.1.0"
+description = "CLI for ACE-Step1.5 music generation with MLX"
+requires-python = ">=3.10"
+dependencies = [
+    "mlx-audio",
+    "soundfile",
+]
+
+[project.scripts]
+acegen = "acegen.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
