@@ -29,6 +29,8 @@ def build_parser():
     g.add_argument("--model", default="mlx-community/ACE-Step1.5-MLX-4bit", help="HF model ID")
     g.add_argument("-c", "--chunk-duration", type=float, default=30.0,
                     help="Max seconds per chunk for long audio (default: 30)")
+    g.add_argument("--no-consistent", action="store_true",
+                    help="Disable single-LM consistent chunking (per-chunk LM)")
     g.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
     return p
@@ -55,6 +57,7 @@ def main():
             seed=args.seed,
             model_id=args.model,
             chunk_duration=args.chunk_duration,
+            consistent=not args.no_consistent,
             verbose=args.verbose,
         )
     else:

@@ -2,6 +2,7 @@ import math
 import time
 from pathlib import Path
 
+import mlx.core as mx
 import numpy as np
 import soundfile as sf
 from mlx_audio.tts.utils import load_model
@@ -29,6 +30,14 @@ def load_lyrics(path_or_text: str) -> str:
     if p.exists() and p.is_file():
         return p.read_text().strip()
     return path_or_text
+
+
+def _latent_len(duration: float) -> int:
+    pool = 5
+    n = int(duration * 25)
+    if n % pool != 0:
+        n = (n // pool + 1) * pool
+    return n
 
 
 def _split_lyrics(lyrics: str, n_chunks: int) -> list[str]:
@@ -62,25 +71,66 @@ def _chunked_generate(model, text: str, lyrics: str, duration: float,
                       vocal_language: str, use_lm: bool, lm_model_size: str,
                       num_steps: int, shift: float, guidance_scale: float,
                       bpm, keyscale, seed, overlap: float,
-                      chunk_duration: float, verbose: bool) -> tuple[np.ndarray, int]:
+                      chunk_duration: float, consistent: bool,
+                      verbose: bool) -> tuple[np.ndarray, int]:
     n_chunks = math.ceil(duration / chunk_duration)
     chunk_len = (duration + overlap * (n_chunks - 1)) / n_chunks
 
     print(f"Chunked mode: {n_chunks} chunks x {chunk_len:.1f}s + {overlap}s overlap")
 
     lyrics_chunks = _split_lyrics(lyrics, n_chunks)
+
+    full_hints = None
+    if use_lm and consistent:
+        print("Generating song blueprint (5Hz LM)...")
+        try:
+            full_hints = model._generate_lm_hints(
+                caption=text,
+                lyrics=lyrics,
+                duration=math.ceil(duration),
+                language=vocal_language,
+                target_len=_latent_len(duration),
+                seed=seed,
+                model_size=lm_model_size,
+                verbose=verbose,
+            )
+            if full_hints is not None:
+                print(f"  Blueprint: {full_hints.shape[1]} frames at 25Hz")
+            else:
+                print("  LM returned None, falling back to per-chunk LM")
+        except Exception as e:
+            print(f"  LM failed ({e}), falling back to per-chunk LM")
+            full_hints = None
+
     audio_chunks = []
     sample_rate = None
+    non_overlap = chunk_len - overlap
 
     for i in range(n_chunks):
         print(f"  Chunk {i + 1}/{n_chunks}...", end=" ", flush=True)
         chunk_seed = seed + i if seed is not None else None
+
+        if full_hints is not None:
+            chunk_latent_len = _latent_len(chunk_len)
+            start_frame = int(i * non_overlap * 25)
+            end_frame = start_frame + chunk_latent_len
+            if end_frame > full_hints.shape[1]:
+                chunk_hints = full_hints[:, start_frame:, :]
+                pad_len = end_frame - full_hints.shape[1]
+                pad = mx.repeat(chunk_hints[:, -1:, :], pad_len, axis=1)
+                chunk_hints = mx.concatenate([chunk_hints, pad], axis=1)
+            else:
+                chunk_hints = full_hints[:, start_frame:end_frame, :]
+        else:
+            chunk_hints = None
+
         for result in model.generate(
             text=text,
             lyrics=lyrics_chunks[i],
             duration=chunk_len,
+            lm_precomputed_hints=chunk_hints,
+            use_lm=(full_hints is None and use_lm),
             vocal_language=vocal_language,
-            use_lm=use_lm,
             lm_model_size=lm_model_size,
             num_steps=num_steps,
             shift=shift,
@@ -120,6 +170,7 @@ def generate(
     seed=None,
     model_id: str = MODEL_ID,
     chunk_duration: float = 30.0,
+    consistent: bool = True,
     verbose: bool = True,
 ):
     model = get_model(model_id)
@@ -131,7 +182,7 @@ def generate(
             model, text, lyrics_text, duration,
             vocal_language, use_lm, lm_model_size,
             num_steps, shift, guidance_scale,
-            bpm, keyscale, seed, overlap, chunk_duration, verbose,
+            bpm, keyscale, seed, overlap, chunk_duration, consistent, verbose,
         )
         sf.write(output, audio, sr)
         print(f"saved: {output} ({audio.shape[0] / sr:.1f}s)")

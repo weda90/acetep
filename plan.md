@@ -29,21 +29,27 @@ acegen info           # Informasi model dan status
 | `--seed` | random | Seed |
 | `--model` | `"mlx-community/ACE-Step1.5-MLX-4bit"` | HF model ID |
 | `--chunk-duration`, `-c` | `30` | Maks detik per chunk (0=disable) |
+| `--no-consistent` | — | Matikan single-LM consistent chunking |
 | `--verbose`, `-v` | `False` | Output detail |
 
 ## Chunked Mode (Long Audio)
 
 Untuk lagu lebih dari ~120s (tergantung GPU), durasi dipecah otomatis menjadi
-beberapa chunk, di-generate terpisah dengan seed berurutan, lalu di-stitch
-dengan crossfade 2 detik agar transisi mulus.
+beberapa chunk, lalu di-stitch dengan crossfade 2 detik.
 
-Alur:
-1. `n_chunks = ceil(duration / chunk_duration)`
-2. Lirik dibagi proporsional per chunk
-3. Tiap chunk di-generate dengan seed `seed + i`, prompt/BPM/key tetap
-4. Overlap chunk[i] dengan chunk[i+1] sebesar 2s
-5. Linear crossfade (fade-out / fade-in) di setiap boundary
-6. Output: 1 file WAV utuh
+### Consistent Mode (Default)
+
+1. **5Hz LM jalan SEKALI** untuk full durasi → 1 blueprint koheren
+2. Blueprint dipecah per chunk (seed berurutan, BPM/key/prompt tetap)
+3. Diffusion jalan per-chunk dengan blueprint yang sama
+4. Crossfade 2s di setiap boundary → musik tetap konsisten
+
+### Fallback (`--no-consistent`)
+
+Gunakan jika single LM gagal (GPU terbatas):
+1. Tiap chunk generate LM sendiri (blueprint berbeda tiap chunk)
+2. Seed, BPM, key, prompt tetap antar chunk
+3. Crossfade 2s untuk smoothing transisi
 
 ## Examples
 
@@ -51,11 +57,14 @@ Alur:
 # Short generation (single pass)
 acegen generate -t "jazz piano" -d 30 -o jazz.wav
 
-# Long generation with chunking (e.g. 180s)
+# Long generation with consistent chunking (default)
 acegen generate -t "pop song" -l lyrics.txt -d 180 -L id -o lagu.wav
 
 # Custom chunk size (for tighter GPU)
 acegen generate -t "ambient" -d 180 -c 20 -o ambient.wav
+
+# Per-chunk LM (fallback, less consistent)
+acegen generate -t "pop" -l lyrics.txt -d 180 --no-consistent -o lagu.wav
 
 # Disable chunking
 acegen generate -t "beat" -d 30 -c 0 -o beat.wav
