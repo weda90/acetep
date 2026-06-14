@@ -208,7 +208,7 @@ def generate(
     use_lm: bool = True,
     lm_model_size: str = "0.6B",
     num_steps: int = 8,
-    shift: float = 3.0,
+    shift: float = 1.0,
     guidance_scale: float = 1.0,
     bpm=None,
     keyscale=None,

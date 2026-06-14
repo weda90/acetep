@@ -22,7 +22,7 @@ acegen info           # Informasi model dan status
 | `--lm` | `True` | Gunakan 5Hz LM |
 | `--lm-model` | `"0.6B"` | Ukuran LM |
 | `--steps` | `8` | Diffusion steps |
-| `--shift` | `3.0` | Timestep shift |
+| `--shift` | `1.0` | Timestep shift |
 | `--cfg` | `1.0` | Guidance scale (auto 4.0 jika ada lirik) |
 | `--bpm` | auto | BPM override |
 | `--key` | auto | Key override |
@@ -60,6 +60,57 @@ Gunakan jika single LM gagal (GPU terbatas):
 1. Tiap chunk generate LM sendiri (blueprint berbeda tiap chunk)
 2. Seed, BPM, key, prompt tetap antar chunk
 3. Crossfade 2s untuk smoothing transisi
+
+### Chunking Inconsistency
+
+Current crossfade stitch (2s overlap) sering menyebabkan:
+- Vokal prominence tidak konsisten antar chunk
+- Beat/bpm patah/pitch shift di sambungan
+- Artifak audible di overlap region
+
+**Planned fix: Repaint-based stitching** — ganti crossfade dengan `task_type="repaint"`
+untuk regenerate overlap region secara natural (lihat Audio Input section di bawah).
+
+## Audio Input (source_audio)
+
+ACE-Step1.5 menerima audio input via parameter `source_audio` (mx.array).
+6 task type, tapi MLX turbo hanya support 3:
+
+| Task | Fungsi | Tersedia di MLX? |
+|------|--------|-----------------|
+| `text2music` | Text → musik | ✅ |
+| `cover` | Source audio → cover ulang | ✅ |
+| `repaint` | Regenerate segmen spesifik | ✅ |
+| `extract` | Stem separation (vocal/drum) | ❌ (non-turbo) |
+| `lego` | Tambah track ke audio existing | ❌ (non-turbo) |
+| `complete` | Orkestrasi dari motif | ❌ (non-turbo) |
+
+### Batasan MLX
+- `voice` parameter ada tapi **"not yet implemented"** — voice cloning tidak bisa
+- `reference_audio` tidak ada di MLX — timbre/style reference tidak bisa
+- `_prepare_timbre()` selalu feed silence — reference audio tidak difungsikan
+
+### Plan: Repaint untuk Stitching Chunk
+
+Gantikan crossfade 2s dengan repaint pada overlap region:
+
+```
+Chunk 0 ──────────────────────┐
+                               ├── [28s–34s] → repaint task
+Chunk 1 ──────────────────────┘
+```
+
+Langkah:
+1. Generate chunk 0 (0–32s) dan chunk 1 (30–62s) seperti biasa
+2. Concat kasar, ambil region overlap (28–34s) sebagai `source_audio`
+3. Panggil `model.generate(task_type="repaint", source_audio=overlap_audio, duration=6)`
+4. Model repair transisi — hasil seamless tanpa crossfade
+
+### Test Plan (sebelum implementasi)
+1. Generate audio 30s `text2music` → save
+2. Load sebagai `source_audio`, generate ulang dengan `task_type="cover"`, prompt baru
+3. Validasi: apakah cover mode berfungsi di MLX turbo?
+4. Jika ya: implementasi repaint stitching ke chunking
 
 ## Examples
 

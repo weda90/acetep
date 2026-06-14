@@ -22,7 +22,7 @@ def build_parser():
     g.add_argument("--no-lm", action="store_false", dest="use_lm", help="Disable 5Hz LM")
     g.add_argument("--lm-model", default="0.6B", choices=["0.6B", "4B"], help="5Hz LM size (default: 0.6B)")
     g.add_argument("--steps", type=int, default=8, help="Diffusion steps (default: 8)")
-    g.add_argument("--shift", type=float, default=3.0, help="Timestep shift (default: 3.0)")
+    g.add_argument("--shift", type=float, default=1.0, help="Timestep shift (default: 1.0)")
     g.add_argument("--cfg", type=float, default=1.0, help="Guidance scale (default: 1.0)")
     g.add_argument("--bpm", type=int, default=None, help="BPM override")
     g.add_argument("--key", default=None, help="Key/scale override")
