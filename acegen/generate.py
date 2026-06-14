@@ -7,10 +7,30 @@ import numpy as np
 import soundfile as sf
 from mlx_audio.tts.utils import load_model
 
+# ── Monkey-patch: fix LM prompt to include language ──────────────
+import mlx_audio.tts.models.ace_step.lm as _ace_lm
+
+_orig_format_prompt = _ace_lm.ACEStepLM._format_prompt
+
+
+def _patched_format_prompt(self, caption, lyrics, duration, language="en"):
+    prompt = _orig_format_prompt(self, caption, lyrics, duration, language)
+    prompt = prompt.replace("\n<|endoftext|>", f"\n- language: {language}\n<|endoftext|>")
+    return prompt
+
+
+_ace_lm.ACEStepLM._format_prompt = _patched_format_prompt
+
+# ── Constants ────────────────────────────────────────────────────
+
 MODEL_ID = "mlx-community/ACE-Step1.5-MLX-4bit"
+
+_VOCAL_KEYWORDS = ["vocal", "sing", "voice", "vocalist", "vokal", "nyanyi"]
 
 _model_cache = None
 
+
+# ── Helpers ──────────────────────────────────────────────────────
 
 def get_model(model_id: str = MODEL_ID):
     global _model_cache
@@ -66,6 +86,29 @@ def _crossfade(a: np.ndarray, b: np.ndarray, overlap: int) -> np.ndarray:
     blended = a[-ol:] * fade_out + b[:ol] * fade_in
     return np.concatenate([a[:-ol], blended, b[ol:]])
 
+
+_LANG_NAMES = {
+    "en": "English", "id": "Indonesian", "zh": "Chinese",
+    "ja": "Japanese", "ko": "Korean", "de": "German",
+    "fr": "French", "es": "Spanish", "it": "Italian",
+    "pt": "Portuguese", "ru": "Russian", "ar": "Arabic",
+    "hi": "Hindi", "nl": "Dutch", "tr": "Turkish",
+    "pl": "Polish", "cs": "Czech", "hu": "Hungarian",
+}
+
+
+def _enrich_prompt(text: str, lyrics: str, language: str) -> str:
+    if not lyrics:
+        return text
+    text_lower = text.lower()
+    for kw in _VOCAL_KEYWORDS:
+        if kw in text_lower:
+            return text
+    lang_name = _LANG_NAMES.get(language, language)
+    return f"{text}, with {lang_name} vocals"
+
+
+# ── Chunked generation ───────────────────────────────────────────
 
 def _chunked_generate(model, text: str, lyrics: str, duration: float,
                       vocal_language: str, use_lm: bool, lm_model_size: str,
@@ -154,6 +197,8 @@ def _chunked_generate(model, text: str, lyrics: str, duration: float,
     return result, sample_rate
 
 
+# ── Main entry point ─────────────────────────────────────────────
+
 def generate(
     text: str,
     lyrics: str = "",
@@ -175,6 +220,15 @@ def generate(
 ):
     model = get_model(model_id)
     lyrics_text = load_lyrics(lyrics)
+
+    # Auto-bump guidance scale when lyrics provided for stronger conditioning
+    if lyrics_text and guidance_scale <= 1.0:
+        guidance_scale = 4.0
+        if verbose:
+            print(f"Lyrics detected: guidance_scale auto-bumped to {guidance_scale}")
+
+    # Auto-enrich text prompt with vocal description
+    text = _enrich_prompt(text, lyrics_text, vocal_language)
 
     if chunk_duration > 0 and duration > chunk_duration:
         overlap = 2.0

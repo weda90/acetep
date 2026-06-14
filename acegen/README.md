@@ -55,6 +55,8 @@ acegen generate -t "pop" -l lirik.txt -d 180 -c 30 --no-consistent -o lagu.wav
 
 - `use_lm=True` wajib untuk kualitas bagus (default ON)
 - Model otomatis di-cache setelah pertama load
+- Jika lirik disediakan, `guidance_scale` auto-bump ke 4.0
+  dan prompt auto-ditambah deskripsi vokal (misal ", with English vocals")
 - Untuk durasi panjang (misal 180s), aktifkan chunking dengan `-c <detik>`:
   LM blueprint dibuat sekali untuk full durasi, lalu diffusion
   dijalankan per-chunk dengan blueprint yang sama + crossfade 2s

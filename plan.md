@@ -23,7 +23,7 @@ acegen info           # Informasi model dan status
 | `--lm-model` | `"0.6B"` | Ukuran LM |
 | `--steps` | `8` | Diffusion steps |
 | `--shift` | `3.0` | Timestep shift |
-| `--cfg` | `1.0` | Guidance scale |
+| `--cfg` | `1.0` | Guidance scale (auto 4.0 jika ada lirik) |
 | `--bpm` | auto | BPM override |
 | `--key` | auto | Key override |
 | `--seed` | random | Seed |
@@ -31,6 +31,15 @@ acegen info           # Informasi model dan status
 | `--chunk-duration`, `-c` | `0` | Aktifkan chunked mode: maks detik per chunk (default: disabled) |
 | `--no-consistent` | — | Matikan single-LM consistent chunking |
 | `--verbose`, `-v` | `False` | Output detail |
+
+## Vocal Fixes
+
+MLX port ACE-Step memiliki 2 bug yang menyebabkan vokal tidak muncul:
+
+| Bug | Fix |
+|-----|-----|
+| LM prompt tidak cantumkan bahasa | Monkey-patch `_format_prompt()` tambah `- language: en` |
+| Sinyal vokal lemah di diffusion | `guidance_scale` auto 4.0 + prompt auto-enrich `", with English vocals"` |
 
 ## Chunked Mode (Long Audio)
 
